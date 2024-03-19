@@ -3,6 +3,7 @@ package org.max.seminar.spoon;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -36,12 +37,12 @@ public class IngredientSubstitutesTest extends AbstractTest {
         bodyError.setStatus("Error");
 
         logger.debug("Формирование мока для GET /food/ingredients/substitutes");
-        stubFor(get(urlPathEqualTo("/food/ingredients/substitutes"))
+        stubFor(any(urlPathEqualTo("/food/ingredients/substitutes"))
                 .withQueryParam("ingredientName", equalTo("butter"))
                 .willReturn(aResponse()
                         .withStatus(200).withBody(mapper.writeValueAsString(bodyOk))));
 
-        stubFor(get(urlPathEqualTo("/food/ingredients/substitutes"))
+        stubFor(request("POST", urlPathEqualTo("/food/ingredients/substitutes"))
                 .withQueryParam("ingredientName", equalTo("error"))
                 .willReturn(aResponse()
                         .withStatus(200).withBody(mapper.writeValueAsString(bodyError))));
@@ -50,7 +51,7 @@ public class IngredientSubstitutesTest extends AbstractTest {
         logger.debug("http клиент создан");
         //when
 
-        HttpGet request = new HttpGet(getBaseUrl()+"/food/ingredients/substitutes");
+        HttpPost request = new HttpPost(getBaseUrl()+"/food/ingredients/substitutes");
         URI uriOk = new URIBuilder(request.getURI())
                 .addParameter("ingredientName", "butter")
                 .build();
@@ -66,7 +67,7 @@ public class IngredientSubstitutesTest extends AbstractTest {
 
         //then
 
-        verify(2, getRequestedFor(urlPathEqualTo("/food/ingredients/substitutes")));
+        verify(2, postRequestedFor(urlPathEqualTo("/food/ingredients/substitutes")));
         assertEquals(200, responseOk.getStatusLine().getStatusCode());
         assertEquals(200, responseError.getStatusLine().getStatusCode());
         assertEquals("OK", mapper.readValue(responseOk.getEntity().getContent(), IngredientSubstitutesDto.class).getStatus());
@@ -78,7 +79,7 @@ public class IngredientSubstitutesTest extends AbstractTest {
         logger.info("Тест код ответ 401 запущен");
         //given
         logger.debug("Формирование мока для GET /food/ingredients/substitutes");
-        stubFor(get(urlPathEqualTo("/food/ingredients/substitutes"))
+        stubFor(request("GET", urlPathEqualTo("/food/ingredients/substitutes"))
                 .withQueryParam("apiKey", notMatching("82c9229354f849e78efe010d94150807"))
                 .willReturn(aResponse()
                         .withStatus(401).withBody("ERROR")));

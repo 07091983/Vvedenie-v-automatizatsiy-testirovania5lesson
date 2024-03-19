@@ -37,14 +37,14 @@ public class GetLocationTest extends AbstractTest{
 
         logger.debug("Формирование мока для GET /locations/v1/cities/autocomplete");
         stubFor(get(urlPathEqualTo("/locations/v1/cities/autocomplete"))
-                .withQueryParam("q", equalTo("Samara"))
+                .withQueryParam("q", equalTo("Moscow"))
                 .willReturn(aResponse()
                         .withStatus(200).withBody(mapper.writeValueAsString(bodyOk))));
 
         stubFor(get(urlPathEqualTo("/locations/v1/cities/autocomplete"))
                 .withQueryParam("q", equalTo("error"))
                 .willReturn(aResponse()
-                        .withStatus(200).withBody(mapper.writeValueAsString(bodyError))));
+                        .withStatus(400).withBody(mapper.writeValueAsString(bodyError))));
 
         CloseableHttpClient httpClient = HttpClients.createDefault();
         logger.debug("http клиент создан");
@@ -52,7 +52,7 @@ public class GetLocationTest extends AbstractTest{
 
         HttpGet request = new HttpGet(getBaseUrl()+"/locations/v1/cities/autocomplete");
         URI uriOk = new URIBuilder(request.getURI())
-                .addParameter("q", "Samara")
+                .addParameter("q", "Moscow")
                 .build();
         request.setURI(uriOk);
         HttpResponse responseOk = httpClient.execute(request);
@@ -68,7 +68,7 @@ public class GetLocationTest extends AbstractTest{
 
         verify(2, getRequestedFor(urlPathEqualTo("/locations/v1/cities/autocomplete")));
         assertEquals(200, responseOk.getStatusLine().getStatusCode());
-        assertEquals(200, responseError.getStatusLine().getStatusCode());
+        assertEquals(400, responseError.getStatusLine().getStatusCode());
         assertEquals("OK", mapper.readValue(responseOk.getEntity().getContent(), Location.class).getKey());
         assertEquals("Error", mapper.readValue(responseError.getEntity().getContent(), Location.class).getKey());
 
@@ -81,22 +81,39 @@ public class GetLocationTest extends AbstractTest{
         //given
         logger.debug("Формирование мока для GET /locations/v1/cities/autocomplete");
         stubFor(get(urlPathEqualTo("/locations/v1/cities/autocomplete"))
-                .withQueryParam("apiKey", notMatching("82c9229354f849e78efe010d94150807"))
+                .withQueryParam("apiKey", equalTo("82c9229354f849e78efe010d94150807"))
                 .willReturn(aResponse()
                         .withStatus(401).withBody("ERROR")));
+
+        stubFor(get(urlPathEqualTo("/locations/v1/cities/autocomplete"))
+                .withQueryParam("apiKey", containing("Hello254"))
+                .willReturn(aResponse()
+                        .withStatus(200).withBody("Ok")));
+
         CloseableHttpClient httpClient = HttpClients.createDefault();
         HttpGet request = new HttpGet(getBaseUrl()+"/locations/v1/cities/autocomplete");
         URI uri = new URIBuilder(request.getURI())
-                .addParameter("apiKey", "A_82c9229354f849e78efe010d94150807")
+                .addParameter("apiKey", "82c9229354f849e78efe010d94150807")
                 .build();
         request.setURI(uri);
         logger.debug("http клиент создан");
         //when
         HttpResponse response = httpClient.execute(request);
+
+        request = new HttpGet(getBaseUrl()+"/locations/v1/cities/autocomplete");
+        URI uriOk = new URIBuilder(request.getURI())
+                .addParameter("apiKey", "Hello254-Hello")
+                .build();
+        request.setURI(uriOk);
+
+        HttpResponse responseOk = httpClient.execute(request);
         //then
         verify(getRequestedFor(urlPathEqualTo("/locations/v1/cities/autocomplete")));
         assertEquals(401, response.getStatusLine().getStatusCode());
         assertEquals("ERROR", convertResponseToString(response));
+
+        assertEquals(200, responseOk.getStatusLine().getStatusCode());
+        assertEquals("Ok", convertResponseToString(responseOk));
 
     }
 }
